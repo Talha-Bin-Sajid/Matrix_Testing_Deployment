@@ -2,8 +2,7 @@
   "name": "my-node-project",
   "version": "1.0.0",
   "scripts": {
-    "test": "jest --coverage --testResultsProcessor=jest-junit --verbose",
-    "test:debug": "jest --coverage --testResultsProcessor=jest-junit --verbose --no-cache --detectOpenHandles",
+    "test": "jest --coverage --testResultsProcessor=jest-junit",
     "build": "webpack --mode production"
   },
   "devDependencies": {

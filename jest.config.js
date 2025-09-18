@@ -1,18 +1,14 @@
-// jest.config.js
 module.exports = {
   testEnvironment: 'node',
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
-  testMatch: [
-    '**/*.test.js',
-    '**/__tests__/**/*.js'
-  ],
+  testMatch: ['**/test/**/*.test.js', '**/*.test.js'],
   reporters: [
     'default',
     ['jest-junit', {
       outputDirectory: 'test-results',
-      outputName: 'junit.xml',
+      outputName: 'junit.xml'
     }]
   ]
 };
