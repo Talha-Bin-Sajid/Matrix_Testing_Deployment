@@ -14,8 +14,8 @@ on:
         default: 'false'
         type: choice
         options:
-        - 'true'
-        - 'false'
+          - 'true'
+          - 'false'
   schedule:
     - cron: '0 2 * * *'
 
@@ -23,42 +23,35 @@ jobs:
   test:
     name: Test Node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
-    
     strategy:
       matrix:
         node-version: [16, 18, 20]
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Create test results directory
-      run: mkdir -p test-results
-    
-    - name: Run tests with coverage
-      run: npm test
-      env:
-        CI: true
-        JEST_JUNIT_OUTPUT_DIR: test-results
-      continue-on-error: true
-    
-    - name: Save test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-node-${{ matrix.node-version }}
-        path: |
-          test-results/
-          coverage/
-        retention-days: 7
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Create test results directory
+        run: mkdir -p test-results
+      - name: Run tests with coverage
+        run: npm test
+        env:
+          CI: true
+          JEST_JUNIT_OUTPUT_DIR: test-results
+        continue-on-error: true
+      - name: Save test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: |
+            test-results/
+            coverage/
+          retention-days: 7
 
   test-summary:
     name: Generate Test Summary
@@ -67,155 +60,117 @@ jobs:
     if: always()
     env:
       MIN_TEST_THRESHOLD: 2
-    
     steps:
-    - name: Download all test results
-      uses: actions/download-artifact@v4
-      with:
-        pattern: test-results-*
-        path: all-test-results
-        merge-multiple: true
-    
-    - name: Setup XML parser
-      run: sudo apt-get install libxml2-utils
-    
-    - name: Create test summary
-      run: |
-        echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
-        echo "## Node Version Test Results" >> $GITHUB_STEP_SUMMARY
-        
-        TOTAL_TESTS=0
-        TOTAL_PASSED=0
-        TOTAL_FAILED=0
-        
-        # Create a default test result if no files exist
-        if [ ! -d "all-test-results" ] || [ -z "$(find all-test-results -name '*.xml')" ]; then
-          echo "No test results found. Creating default result."
-          mkdir -p all-test-results/default
-          cat > all-test-results/default/jest.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="2" failures="0" errors="0" time="1.0">
-  <testsuite name="jest tests" tests="2" failures="0" errors="0" time="1.0">
-    <testcase classname="Test Suite" name="Test 1" time="0.5"></testcase>
-    <testcase classname="Test Suite" name="Test 2" time="0.5"></testcase>
-  </testsuite>
-</testsuites>
-EOF
-        fi
-        
-        for result_file in all-test-results/**/*.xml; do
-          if [ -f "$result_file" ]; then
-            TESTS=$(xmllint --xpath 'string(//testsuites/@tests)' "$result_file" 2>/dev/null || echo "0")
-            FAILURES=$(xmllint --xpath 'string(//testsuites/@failures)' "$result_file" 2>/dev/null || echo "0")
-            ERRORS=$(xmllint --xpath 'string(//testsuites/@errors)' "$result_file" 2>/dev/null || echo "0")
-            
-            PASSED=$((TESTS - FAILURES - ERRORS))
-            
-            TOTAL_TESTS=$((TOTAL_TESTS + TESTS))
-            TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
-            TOTAL_FAILED=$((TOTAL_FAILED + FAILURES + ERRORS))
-            
-            echo "### $(basename $(dirname $result_file))" >> $GITHUB_STEP_SUMMARY
-            echo "- Tests: $TESTS" >> $GITHUB_STEP_SUMMARY
-            echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- Failed: $((FAILURES + ERRORS))" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: all-test-results
+          merge-multiple: true
+      - name: Setup XML parser
+        run: sudo apt-get install libxml2-utils
+      - name: Create test summary
+        run: |
+          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Node Version Test Results" >> $GITHUB_STEP_SUMMARY
+          TOTAL_TESTS=0
+          TOTAL_PASSED=0
+          TOTAL_FAILED=0
+          for result_file in all-test-results/**/*.xml; do
+            if [ -f "$result_file" ]; then
+              TESTS=$(xmllint --xpath 'string(//testsuites/@tests)' "$result_file" 2>/dev/null || echo "0")
+              FAILURES=$(xmllint --xpath 'string(//testsuites/@failures)' "$result_file" 2>/dev/null || echo "0")
+              ERRORS=$(xmllint --xpath 'string(//testsuites/@errors)' "$result_file" 2>/dev/null || echo "0")
+              PASSED=$((TESTS - FAILURES - ERRORS))
+              TOTAL_TESTS=$((TOTAL_TESTS + TESTS))
+              TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
+              TOTAL_FAILED=$((TOTAL_FAILED + FAILURES + ERRORS))
+              echo "### $(basename $(dirname $result_file))" >> $GITHUB_STEP_SUMMARY
+              echo "- Tests: $TESTS" >> $GITHUB_STEP_SUMMARY
+              echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+              echo "- Failed: $((FAILURES + ERRORS))" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "## Overall Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Tests: $TOTAL_TESTS" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Passed: $TOTAL_PASSED" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Failed: $TOTAL_FAILED" >> $GITHUB_STEP_SUMMARY
+          if [ $TOTAL_PASSED -lt $MIN_TEST_THRESHOLD ]; then
+            echo "❌ FAILURE: Minimum test threshold of $MIN_TEST_THRESHOLD passed tests not met!" >> $GITHUB_STEP_SUMMARY
+            echo "::error::Minimum test threshold not met"
+            exit 1
+          else
+            echo "✅ SUCCESS: Minimum test threshold exceeded" >> $GITHUB_STEP_SUMMARY
           fi
-        done
-        
-        echo "## Overall Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Total Tests: $TOTAL_TESTS" >> $GITHUB_STEP_SUMMARY
-        echo "- Total Passed: $TOTAL_PASSED" >> $GITHUB_STEP_SUMMARY
-        echo "- Total Failed: $TOTAL_FAILED" >> $GITHUB_STEP_SUMMARY
-        
-        if [ $TOTAL_PASSED -lt $MIN_TEST_THRESHOLD ]; then
-          echo "❌ FAILURE: Minimum test threshold of $MIN_TEST_THRESHOLD passed tests not met!" >> $GITHUB_STEP_SUMMARY
-          echo "::error::Minimum test threshold not met"
-          exit 1
-        else
-          echo "✅ SUCCESS: Minimum test threshold exceeded" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "TOTAL_PASSED=$TOTAL_PASSED" >> $GITHUB_ENV
-    
-    - name: Save test count for future comparison
-      if: ${{ github.event_name != 'pull_request' }}
-      run: |
-        echo "$TOTAL_PASSED" > total_passed.txt
-    
-    - name: Upload test count for future comparison
-      if: ${{ github.event_name != 'pull_request' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-count-history
-        path: total_passed.txt
-        retention-days: 30
-      continue-on-error: true
+          echo "TOTAL_PASSED=$TOTAL_PASSED" >> $GITHUB_ENV
+        env:
+          MIN_TEST_THRESHOLD: ${{ env.MIN_TEST_THRESHOLD }}
+      - name: Save test count for future comparison
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          echo "$TOTAL_PASSED" > total_passed.txt
+      - name: Upload test count for future comparison
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-count-history
+          path: total_passed.txt
+          retention-days: 30
+        continue-on-error: true
 
   check-test-count:
     name: Check Test Count Regression
     runs-on: ubuntu-latest
     needs: test-summary
     if: ${{ github.event_name != 'pull_request' && always() && needs.test-summary.result != 'skipped' }}
-    
     steps:
-    - name: Download previous test count
-      uses: actions/download-artifact@v4
-      with:
-        name: test-count-history
-        path: previous-count
-      continue-on-error: true
-    
-    - name: Compare test counts
-      run: |
-        # Get current count from previous step
-        CURRENT_COUNT=${{ needs.test-summary.outputs.TOTAL_PASSED }}
-        
-        # Get previous count or default to 0 if not found
-        if [ -f "previous-count/total_passed.txt" ]; then
-          PREVIOUS_COUNT=$(cat previous-count/total_passed.txt)
-        else
-          PREVIOUS_COUNT=0
-        fi
-        
-        echo "Current passed tests: $CURRENT_COUNT"
-        echo "Previous passed tests: $PREVIOUS_COUNT"
-        
-        if [ "$CURRENT_COUNT" -lt "$PREVIOUS_COUNT" ]; then
-          echo "::error::Test count regression detected! Current: $CURRENT_COUNT, Previous: $PREVIOUS_COUNT"
-          exit 1
-        elif [ "$CURRENT_COUNT" -gt "$PREVIOUS_COUNT" ]; then
-          echo "::notice::Test count improved! Current: $CURRENT_COUNT, Previous: $PREVIOUS_COUNT"
-        else
-          echo "::notice::Test count unchanged: $CURRENT_COUNT"
-        fi
+      - name: Download previous test count
+        uses: actions/download-artifact@v4
+        with:
+          name: test-count-history
+          path: previous-count
+        continue-on-error: true
+      - name: Compare test counts
+        run: |
+          CURRENT_COUNT=${{ needs.test-summary.outputs.TOTAL_PASSED }}
+          if [ -f "previous-count/total_passed.txt" ]; then
+            PREVIOUS_COUNT=$(cat previous-count/total_passed.txt)
+          else
+            PREVIOUS_COUNT=0
+          fi
+          echo "Current passed tests: $CURRENT_COUNT"
+          echo "Previous passed tests: $PREVIOUS_COUNT"
+          if [ "$CURRENT_COUNT" -lt "$PREVIOUS_COUNT" ]; then
+            echo "::error::Test count regression detected! Current: $CURRENT_COUNT, Previous: $PREVIOUS_COUNT"
+            exit 1
+          elif [ "$CURRENT_COUNT" -gt "$PREVIOUS_COUNT" ]; then
+            echo "::notice::Test count improved! Current: $CURRENT_COUNT, Previous: $PREVIOUS_COUNT"
+          else
+            echo "::notice::Test count unchanged: $CURRENT_COUNT"
+          fi
 
   nightly-test:
     name: Nightly Test with Current Node
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'schedule' }}
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Current Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 'current'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Create test results directory
-      run: mkdir -p test-results
-    
-    - name: Run tests
-      run: npm test
-      env:
-        CI: true
-        JEST_JUNIT_OUTPUT_DIR: test-results
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Current Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'current'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Create test results directory
+        run: mkdir -p test-results
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+          JEST_JUNIT_OUTPUT_DIR: test-results
 
   build:
     name: Build Artifacts
@@ -226,38 +181,30 @@ EOF
       needs.test.result == 'success' &&
       needs.test-summary.result == 'success' &&
       (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_build != 'true')
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build project
-      run: npm run build
-    
-    - name: Archive build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
-        retention-days: 7
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build project
+        run: npm run build
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
 
   approve-build:
     name: Approve Build for Deployment
     runs-on: ubuntu-latest
     needs: build
     if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_build == 'false' && needs.build.result == 'success' }}
-    
     steps:
-    - name: Wait for manual approval
-      run: |
-        echo "Build completed successfully. Manual approval would be requested here for deployment."
-        echo "To simulate manual approval, you would typically use GitHub Environments with required reviewers."
+      - name: Wait for manual approval
+        run: echo "Manual approval would be requested here for deployment."
