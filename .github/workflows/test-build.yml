@@ -39,8 +39,47 @@ jobs:
         run: npm ci
       - name: Create test results directory
         run: mkdir -p test-results
+      - name: Debug test setup
+        run: |
+          echo "=== Node.js version ==="
+          node --version
+          echo "=== NPM version ==="
+          npm --version
+          echo "=== Files in project ==="
+          ls -la
+          echo "=== Test files ==="
+          find . -name "*.test.js" -o -name "*.spec.js"
+          echo "=== Package.json test script ==="
+          npm run test --silent 2>&1 || echo "Test command failed"
+          echo "=== Jest config check ==="
+          if [ -f "jest.config.js" ]; then cat jest.config.js; else echo "No jest.config.js found"; fi
       - name: Run tests with coverage
-        run: npm test || exit 0  # Don't fail the job if tests fail
+        run: |
+          set +e  # Don't exit on error
+          npm test 2>&1 | tee test-output.log
+          TEST_EXIT_CODE=$?
+          echo "Test exit code: $TEST_EXIT_CODE"
+          
+          # Create test results even if tests fail
+          mkdir -p test-results
+          if [ ! -f "test-results/junit.xml" ]; then
+            echo "Creating dummy test result file..."
+            cat > test-results/junit.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="jest tests" tests="1" failures="1" errors="0" time="0">
+            <testsuite name="Failed Tests" tests="1" failures="1" errors="0" time="0">
+              <testcase classname="Failed" name="Test execution failed" time="0">
+                <failure message="Tests failed to execute properly">Check logs for details</failure>
+              </testcase>
+            </testsuite>
+          </testsuites>
+          EOF
+          fi
+          
+          # Always create coverage directory
+          mkdir -p coverage
+          
+          exit 0  # Don't fail the workflow step
         env:
           CI: true
           JEST_JUNIT_OUTPUT_DIR: test-results
@@ -52,6 +91,7 @@ jobs:
           path: |
             test-results/
             coverage/
+            test-output.log
           retention-days: 7
 
   test-summary:

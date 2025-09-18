@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="5" failures="0" errors="0" time="0.81">
+  <testsuite name="Math functions" errors="0" failures="0" skipped="0" timestamp="2025-09-18T18:31:05" time="0.607" tests="5">
+    <testcase classname="Math functions should add two numbers" name="Math functions should add two numbers" time="0.003">
+    </testcase>
+    <testcase classname="Math functions should multiply two numbers" name="Math functions should multiply two numbers" time="0">
+    </testcase>
+    <testcase classname="String functions should greet properly" name="String functions should greet properly" time="0">
+    </testcase>
+    <testcase classname="Sanity checks Jest is working" name="Sanity checks Jest is working" time="0">
+    </testcase>
+    <testcase classname="Sanity checks Numbers work as expected" name="Sanity checks Numbers work as expected" time="0">
+    </testcase>
+  </testsuite>
+</testsuites>
