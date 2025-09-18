@@ -72,15 +72,26 @@ jobs:
             FAILED_TESTS=$(grep -o "Tests:.*failed" test-output.log | grep -o "[0-9]\+ failed" | grep -o "[0-9]\+" || echo "0")
             TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
             
-            cat > test-results/junit.xml << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="$TOTAL_TESTS" failures="$FAILED_TESTS" errors="0" time="0">
-  <testsuite name="All Tests" tests="$TOTAL_TESTS" failures="$FAILED_TESTS" errors="0" time="0">
-    $(for i in $(seq 1 $PASSED_TESTS); do echo "    <testcase classname=\"Test\" name=\"Test $i\" time=\"0\"/>"; done)
-    $(for i in $(seq 1 $FAILED_TESTS); do echo "    <testcase classname=\"Test\" name=\"Failed Test $i\" time=\"0\"><failure message=\"Test failed\">Test failed</failure></testcase>"; done)
-  </testsuite>
-</testsuites>
-EOF
+            # Create XML file
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > test-results/junit.xml
+            echo "<testsuites name=\"jest tests\" tests=\"$TOTAL_TESTS\" failures=\"$FAILED_TESTS\" errors=\"0\" time=\"0\">" >> test-results/junit.xml
+            echo "  <testsuite name=\"All Tests\" tests=\"$TOTAL_TESTS\" failures=\"$FAILED_TESTS\" errors=\"0\" time=\"0\">" >> test-results/junit.xml
+            
+            # Add passed test cases
+            for i in $(seq 1 $PASSED_TESTS); do
+              echo "    <testcase classname=\"Test\" name=\"Test $i\" time=\"0\"/>" >> test-results/junit.xml
+            done
+            
+            # Add failed test cases
+            for i in $(seq 1 $FAILED_TESTS); do
+              echo "    <testcase classname=\"Test\" name=\"Failed Test $i\" time=\"0\">" >> test-results/junit.xml
+              echo "      <failure message=\"Test failed\">Test failed</failure>" >> test-results/junit.xml
+              echo "    </testcase>" >> test-results/junit.xml
+            done
+            
+            echo "  </testsuite>" >> test-results/junit.xml
+            echo "</testsuites>" >> test-results/junit.xml
+            
           elif [ $TEST_EXIT_CODE -ne 0 ]; then
             echo "Tests failed. Creating failure XML..."
             cat > test-results/junit.xml << 'EOF'
